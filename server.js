@@ -21,24 +21,26 @@ const StatusSchema = new mongoose.Schema({
 
 const Status = mongoose.model("Status", StatusSchema);
 
+// ذخیره وضعیت از نرم‌افزار پایتونی
 app.post("/status/:username", async (req, res) => {
   const username = req.params.username;
-  const data = req.body;
+  const systems = req.body;
 
   await Status.findOneAndUpdate(
     { username },
-    { ...data },
+    { systems, lastUpdate: new Date().toISOString() },
     { upsert: true }
   );
 
   res.json({ ok: true });
 });
 
+// ارائه وضعیت به سایت
 app.get("/status/:username", async (req, res) => {
   const username = req.params.username;
   const data = await Status.findOne({ username });
 
-  res.json(data || {});
+  res.json(data?.systems || {});
 });
 
 app.listen(3000, () => console.log("Server running on port 3000"));
