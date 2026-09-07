@@ -38,13 +38,13 @@ app.post("/status/:username", async (req, res) => {
     return res.status(403).json({ error: "Wrong password" });
   }
 
-  // اگر یوزر نیست یا پسورد درست است → ذخیره/آپدیت
+  // ذخیره یا آپدیت
   await User.findOneAndUpdate(
     { username },
     {
       password,
       systems,
-      lastUpdate: new Date().toISOString()
+      lastUpdate: new Date().toISOString()   // 🔥 اینجا زمان آپدیت ذخیره می‌شود
     },
     { upsert: true }
   );
@@ -67,6 +67,7 @@ app.get("/status/:username", async (req, res) => {
     });
   }
 
+  // 🔥 اینجا آخرین آپدیت برمی‌گردد
   res.json({
     systems: user.systems || {},
     lastUpdate: user.lastUpdate || null
