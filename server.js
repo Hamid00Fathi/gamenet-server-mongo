@@ -16,10 +16,10 @@ mongoose.connect(process.env.MONGO_URI)
 
 // مدل گیم‌نت
 const UserSchema = new mongoose.Schema({
-  username: String,      // نام گیم‌نت
-  password: String,      // پسورد گیم‌نت
-  systems: Object,       // همه سیستم‌ها
-  lastUpdate: String     // آخرین آپدیت
+  username: String,
+  password: String,
+  systems: Object,
+  lastUpdate: String
 });
 
 const User = mongoose.model("User", UserSchema);
@@ -30,25 +30,20 @@ const User = mongoose.model("User", UserSchema);
 app.post("/status/:username", async (req, res) => {
   const username = req.params.username;
 
-  // نرم‌افزار باید این سه مقدار را بفرستد
   const { password, systems, lastUpdate } = req.body;
 
   const user = await User.findOne({ username });
 
-  // اگر یوزر هست ولی پسورد اشتباهه
   if (user && user.password !== password) {
     return res.status(403).json({ error: "Wrong password" });
   }
 
-  // ذخیره یا آپدیت
   await User.findOneAndUpdate(
     { username },
     {
       password,
       systems,
-      // 🔥 اگر نرم‌افزار lastUpdate فرستاد → همان را ذخیره کن
-      // 🔥 اگر نفرستاد → زمان خوانا بساز
-      lastUpdate: lastUpdate || new Date().toLocaleString("en-GB", { hour12: false })
+      lastUpdate: lastUpdate || new Date().toISOString()
     },
     { upsert: true }
   );
