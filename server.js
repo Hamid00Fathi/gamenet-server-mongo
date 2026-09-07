@@ -9,12 +9,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// اتصال به MongoDB
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB Connected"))
   .catch(err => console.log("Mongo Error:", err));
 
-// مدل گیم‌نت
 const UserSchema = new mongoose.Schema({
   username: String,
   password: String,
@@ -24,12 +22,8 @@ const UserSchema = new mongoose.Schema({
 
 const User = mongoose.model("User", UserSchema);
 
-//
-// 🔥 POST — نرم‌افزار سیستم‌ها را ارسال می‌کند
-//
 app.post("/status/:username", async (req, res) => {
   const username = req.params.username;
-
   const { password, systems, lastUpdate } = req.body;
 
   const user = await User.findOne({ username });
@@ -51,9 +45,6 @@ app.post("/status/:username", async (req, res) => {
   res.json({ ok: true });
 });
 
-//
-// 🔥 GET — سایت سیستم‌ها + آخرین آپدیت را می‌گیرد
-//
 app.get("/status/:username", async (req, res) => {
   const username = req.params.username;
 
