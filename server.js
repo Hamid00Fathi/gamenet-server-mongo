@@ -14,42 +14,45 @@ mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB Connected"))
   .catch(err => console.log("Mongo Error:", err));
 
-// مدل دیتابیس
-const StatusSchema = new mongoose.Schema({
-  username: String,
-  systems: Object,
+// مدل: هر گیم‌نت یک داکیومنت دارد
+const UserSchema = new mongoose.Schema({
+  username: String,      // نام گیم‌نت
+  password: String,      // پسورد گیم‌نت
+  systems: Object,       // همه سیستم‌ها
   lastUpdate: String
 });
 
-const Status = mongoose.model("Status", StatusSchema);
+const User = mongoose.model("User", UserSchema);
 
-// دریافت داده از نرم‌افزار پایتونی و ذخیره در Mongo
+// آپدیت سیستم‌ها + چک پسورد گیم‌نت (نرم‌افزار پایتونی از این استفاده می‌کند)
 app.post("/status/:username", async (req, res) => {
   const username = req.params.username;
-  const systems = req.body;
+  const { password, systems } = req.body;
 
-  await Status.findOneAndUpdate(
+  const user = await User.findOne({ username });
+
+  // اگر یوزر هست ولی پسورد اشتباهه
+  if (user && user.password !== password) {
+    return res.status(403).json({ error: "Wrong password" });
+  }
+
+  // اگر یوزر نیست یا پسورد درسته → ذخیره/آپدیت
+  await User.findOneAndUpdate(
     { username },
-    { systems, lastUpdate: new Date().toISOString() },
+    { password, systems, lastUpdate: new Date().toISOString() },
     { upsert: true }
   );
 
   res.json({ ok: true });
 });
 
+// گرفتن سیستم‌ها برای سایت (بدون پسورد، چون سایت خودش چک می‌کند)
 app.get("/status/:username", async (req, res) => {
   const username = req.params.username;
-  const data = await Status.findOne({ username });
 
-  res.json(data?.systems || {});
-});
+  const user = await User.findOne({ username });
 
-// ارسال داده به سایت (فقط systems)
-app.get("/status/:username", async (req, res) => {
-  const username = req.params.username;
-  const data = await Status.findOne({ username });
-
-  res.json(data?.systems || {});
+  res.json(user?.systems || {});
 });
 
 app.listen(3000, () => console.log("Server running on port 3000"));
