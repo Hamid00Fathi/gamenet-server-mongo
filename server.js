@@ -14,17 +14,19 @@ mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB Connected"))
   .catch(err => console.log("Mongo Error:", err));
 
-// مدل: هر گیم‌نت یک داکیومنت دارد
+// مدل گیم‌نت
 const UserSchema = new mongoose.Schema({
   username: String,      // نام گیم‌نت
   password: String,      // پسورد گیم‌نت
   systems: Object,       // همه سیستم‌ها
-  lastUpdate: String
+  lastUpdate: String     // آخرین آپدیت
 });
 
 const User = mongoose.model("User", UserSchema);
 
-// آپدیت سیستم‌ها + چک پسورد گیم‌نت (نرم‌افزار پایتونی از این استفاده می‌کند)
+//
+// 🔥 POST — نرم‌افزار سیستم‌ها را ارسال می‌کند
+//
 app.post("/status/:username", async (req, res) => {
   const username = req.params.username;
   const { password, systems } = req.body;
@@ -36,23 +38,39 @@ app.post("/status/:username", async (req, res) => {
     return res.status(403).json({ error: "Wrong password" });
   }
 
-  // اگر یوزر نیست یا پسورد درسته → ذخیره/آپدیت
+  // اگر یوزر نیست یا پسورد درست است → ذخیره/آپدیت
   await User.findOneAndUpdate(
     { username },
-    { password, systems, lastUpdate: new Date().toISOString() },
+    {
+      password,
+      systems,
+      lastUpdate: new Date().toISOString()
+    },
     { upsert: true }
   );
 
   res.json({ ok: true });
 });
 
-// گرفتن سیستم‌ها برای سایت (بدون پسورد، چون سایت خودش چک می‌کند)
+//
+// 🔥 GET — سایت سیستم‌ها + آخرین آپدیت را می‌گیرد
+//
 app.get("/status/:username", async (req, res) => {
   const username = req.params.username;
 
   const user = await User.findOne({ username });
 
-  res.json(user?.systems || {});
+  if (!user) {
+    return res.json({
+      systems: {},
+      lastUpdate: null
+    });
+  }
+
+  res.json({
+    systems: user.systems || {},
+    lastUpdate: user.lastUpdate || null
+  });
 });
 
 app.listen(3000, () => console.log("Server running on port 3000"));
