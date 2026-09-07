@@ -46,7 +46,9 @@ app.post("/status/:username", async (req, res) => {
     {
       password,
       systems,
-      lastUpdate: lastUpdate || new Date().toISOString()   // 🔥 زمان واقعی نرم‌افزار
+      // 🔥 اگر نرم‌افزار lastUpdate فرستاد → همان را ذخیره کن
+      // 🔥 اگر نفرستاد → زمان خوانا بساز
+      lastUpdate: lastUpdate || new Date().toLocaleString("en-GB", { hour12: false })
     },
     { upsert: true }
   );
