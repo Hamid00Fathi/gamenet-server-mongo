@@ -37,6 +37,13 @@ app.post("/status/:username", async (req, res) => {
   res.json({ ok: true });
 });
 
+app.get("/status/:username", async (req, res) => {
+  const username = req.params.username;
+  const data = await Status.findOne({ username });
+
+  res.json(data?.systems || {});
+});
+
 // ارسال داده به سایت (فقط systems)
 app.get("/status/:username", async (req, res) => {
   const username = req.params.username;
