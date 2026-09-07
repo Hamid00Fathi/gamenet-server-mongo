@@ -64,12 +64,3 @@ app.get("/status/:username", async (req, res) => {
 });
 
 app.listen(3000, () => console.log("Server running on port 3000"));
-
-app.get("/status/delete_all", async (req, res) => {
-    try {
-        await User.deleteMany({});
-        res.json({ ok: true, message: "تمام کاربران حذف شدند" });
-    } catch (err) {
-        res.status(500).json({ error: err.toString() });
-    }
-});
