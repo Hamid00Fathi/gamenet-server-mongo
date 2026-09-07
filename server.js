@@ -9,10 +9,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// اتصال به MongoDB
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB Connected"))
   .catch(err => console.log("Mongo Error:", err));
 
+// مدل دیتابیس
 const StatusSchema = new mongoose.Schema({
   username: String,
   systems: Object,
@@ -21,7 +23,7 @@ const StatusSchema = new mongoose.Schema({
 
 const Status = mongoose.model("Status", StatusSchema);
 
-// ذخیره وضعیت از نرم‌افزار پایتونی
+// دریافت داده از نرم‌افزار پایتونی و ذخیره در Mongo
 app.post("/status/:username", async (req, res) => {
   const username = req.params.username;
   const systems = req.body;
@@ -35,7 +37,7 @@ app.post("/status/:username", async (req, res) => {
   res.json({ ok: true });
 });
 
-// ارائه وضعیت به سایت
+// ارسال داده به سایت (فقط systems)
 app.get("/status/:username", async (req, res) => {
   const username = req.params.username;
   const data = await Status.findOne({ username });
