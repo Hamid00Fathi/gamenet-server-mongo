@@ -29,7 +29,9 @@ const User = mongoose.model("User", UserSchema);
 //
 app.post("/status/:username", async (req, res) => {
   const username = req.params.username;
-  const { password, systems } = req.body;
+
+  // نرم‌افزار باید این سه مقدار را بفرستد
+  const { password, systems, lastUpdate } = req.body;
 
   const user = await User.findOne({ username });
 
@@ -44,7 +46,7 @@ app.post("/status/:username", async (req, res) => {
     {
       password,
       systems,
-      lastUpdate: new Date().toISOString()   // 🔥 اینجا زمان آپدیت ذخیره می‌شود
+      lastUpdate: lastUpdate || new Date().toISOString()   // 🔥 زمان واقعی نرم‌افزار
     },
     { upsert: true }
   );
@@ -67,7 +69,6 @@ app.get("/status/:username", async (req, res) => {
     });
   }
 
-  // 🔥 اینجا آخرین آپدیت برمی‌گردد
   res.json({
     systems: user.systems || {},
     lastUpdate: user.lastUpdate || null
