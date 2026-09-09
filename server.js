@@ -16,73 +16,65 @@ mongoose.connect(process.env.MONGO_URI)
 
 // مدل کاربر
 const UserSchema = new mongoose.Schema({
-  username: { type: String, unique: true },   // جلوگیری از تکراری بودن
+  username: { type: String, unique: true },
   password: String,
   systems: Object,
-  lastUpdate: String
+  lastUpdate: String,
+  expireDate: String   // 🔥 تاریخ پایان اشتراک
 });
 
 const User = mongoose.model("User", UserSchema);
 
-//
-// 🔥 مسیر چک کردن یوزرنیم تکراری
-//
+// چک یوزرنیم وجود دارد یا نه
 app.get("/check/:username", async (req, res) => {
   const username = req.params.username;
-
   const exists = await User.findOne({ username });
-
   res.json({ exists: !!exists });
 });
 
-//
-// 🔥 مسیر ثبت یا آپدیت وضعیت سیستم‌ها
-//
+// ثبت یا آپدیت وضعیت سیستم‌ها
 app.post("/status/:username", async (req, res) => {
   const username = req.params.username;
   const { password, systems, lastUpdate } = req.body;
 
-  // چک تکراری بودن یوزرنیم
-  const exists = await User.findOne({ username });
+  const user = await User.findOne({ username });
 
-  // اگر کاربر وجود دارد ولی پسورد اشتباه است
-  if (exists && exists.password !== password) {
+  // اگر کاربر هست و پسورد اشتباه است
+  if (user && user.password !== password) {
     return res.status(403).json({ error: "Wrong password" });
   }
 
-  // اگر کاربر وجود ندارد → ایجاد کاربر جدید
-  if (!exists) {
+  // اگر کاربر نیست → ساخت کاربر جدید
+  if (!user) {
     const newUser = new User({
       username,
       password,
       systems,
-      lastUpdate: lastUpdate || new Date().toISOString()
+      lastUpdate: lastUpdate || new Date().toISOString(),
+      expireDate: null   // اشتراک هنوز تنظیم نشده
     });
 
     await newUser.save();
-
     return res.json({ ok: true, created: true });
   }
 
-  // اگر کاربر وجود دارد → آپدیت اطلاعات
+  // اگر کاربر هست → آپدیت
   await User.findOneAndUpdate(
     { username },
     {
       password,
       systems,
       lastUpdate: lastUpdate || new Date().toISOString()
+      // expireDate دست نمی‌زنیم، همان قبلی می‌ماند
     }
   );
 
   res.json({ ok: true, updated: true });
 });
 
-//
-// 🔥 مسیر گرفتن وضعیت سیستم‌ها
-//
+// گرفتن وضعیت سیستم‌ها
 app.get("/status/:username", async (req, res) => {
   const username = req.params.username;
-
   const user = await User.findOne({ username });
 
   if (!user) {
@@ -98,9 +90,7 @@ app.get("/status/:username", async (req, res) => {
   });
 });
 
-//
-// 🔥 حذف همه کاربران (برای تست)
-//
+// حذف همه کاربران (برای تست)
 app.get("/status/delete_all", async (req, res) => {
   try {
     await User.deleteMany({});
@@ -108,6 +98,37 @@ app.get("/status/delete_all", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.toString() });
   }
+});
+
+// 🔥 چک وضعیت اشتراک
+app.get("/subscription/:username", async (req, res) => {
+  const username = req.params.username;
+  const user = await User.findOne({ username });
+
+  if (!user || !user.expireDate) {
+    return res.json({ active: false, expireDate: null });
+  }
+
+  const now = new Date();
+  const expire = new Date(user.expireDate);
+
+  res.json({
+    active: expire > now,
+    expireDate: user.expireDate
+  });
+});
+
+// 🔥 آپدیت تاریخ اشتراک (مثلاً از پنل مدیریت)
+app.post("/subscription/update/:username", async (req, res) => {
+  const username = req.params.username;
+  const { expireDate } = req.body;
+
+  await User.findOneAndUpdate(
+    { username },
+    { expireDate }
+  );
+
+  res.json({ ok: true });
 });
 
 // اجرای سرور
