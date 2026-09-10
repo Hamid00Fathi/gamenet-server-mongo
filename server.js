@@ -53,7 +53,7 @@ app.post("/status/:username", async (req, res) => {
     user = new User({
       username,
       password,
-      systems: systems || {},                         // آخرین وضعیت سیستم‌ها
+      systems: systems || {},                         // اولین وضعیت
       lastUpdate: lastUpdate || new Date().toISOString(),
       expireDate: null
     });
@@ -62,9 +62,18 @@ app.post("/status/:username", async (req, res) => {
     return res.json({ ok: true, created: true });
   }
 
-  // اگر کاربر هست → آپدیت فقط آخرین وضعیت
+  // اگر کاربر هست → آپدیت
   user.password = password;
-  user.systems = systems || user.systems || {};
+
+  // ❗ مهم‌ترین بخش: اگر نرم‌افزار سیستم خالی فرستاد، آخرین وضعیت را پاک نکن
+  const isEmptySystems =
+    !systems ||
+    (typeof systems === "object" && Object.keys(systems).length === 0);
+
+  if (!isEmptySystems) {
+    user.systems = systems;  // فقط وقتی واقعاً داده هست، ذخیره کن
+  }
+
   user.lastUpdate = lastUpdate || new Date().toISOString();
   // expireDate دست نمی‌زنیم
 
