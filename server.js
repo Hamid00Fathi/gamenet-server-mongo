@@ -18,9 +18,14 @@ mongoose.connect(process.env.MONGO_URI)
 const UserSchema = new mongoose.Schema({
   username: { type: String, unique: true },
   password: String,
-  systems: Object,      // آخرین وضعیت سیستم‌ها
-  lastUpdate: String,   // آخرین زمان آپدیت
-  expireDate: String    // تاریخ پایان اشتراک
+  systems: Object,
+  lastUpdate: String,
+  expireDate: String,
+
+  // لایسنس آفلاین
+  licenseKey: String,
+  licenseType: { type: String, default: "online" }, // online یا offline
+  licenseActive: { type: Boolean, default: false }  // فعال یا غیرفعال
 });
 
 const User = mongoose.model("User", UserSchema);
@@ -50,32 +55,37 @@ app.post("/status/:username", async (req, res) => {
 
   // اگر کاربر نیست → ساخت کاربر جدید
   if (!user) {
+    const licenseKey = `OFF-${username}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
     user = new User({
       username,
       password,
-      systems: systems || {},                         // اولین وضعیت
+      systems: systems || {},
       lastUpdate: lastUpdate || new Date().toISOString(),
-      expireDate: null
+      expireDate: null,
+
+      // لایسنس پیش‌فرض
+      licenseKey,
+      licenseType: "online",
+      licenseActive: false
     });
 
     await user.save();
-    return res.json({ ok: true, created: true });
+    return res.json({ ok: true, created: true, licenseKey });
   }
 
   // اگر کاربر هست → آپدیت
   user.password = password;
 
-  // ❗ مهم‌ترین بخش: اگر نرم‌افزار سیستم خالی فرستاد، آخرین وضعیت را پاک نکن
   const isEmptySystems =
     !systems ||
     (typeof systems === "object" && Object.keys(systems).length === 0);
 
   if (!isEmptySystems) {
-    user.systems = systems;  // فقط وقتی واقعاً داده هست، ذخیره کن
+    user.systems = systems;
   }
 
   user.lastUpdate = lastUpdate || new Date().toISOString();
-  // expireDate دست نمی‌زنیم
 
   await user.save();
 
@@ -96,7 +106,6 @@ app.get("/status/:username", async (req, res) => {
     });
   }
 
-  // همیشه آخرین وضعیت ذخیره‌شده را برگردان
   res.json({
     systems: user.systems || {},
     lastUpdate: user.lastUpdate || null
@@ -136,7 +145,7 @@ app.get("/subscription/:username", async (req, res) => {
 });
 
 // ===============================
-// آپدیت تاریخ اشتراک (مثلاً از پنل مدیریت)
+// آپدیت تاریخ اشتراک
 // ===============================
 app.post("/subscription/update/:username", async (req, res) => {
   const username = req.params.username;
@@ -148,6 +157,47 @@ app.post("/subscription/update/:username", async (req, res) => {
   );
 
   res.json({ ok: true });
+});
+
+// ===============================
+// وضعیت لایسنس برای نرم‌افزار
+// ===============================
+app.get("/license/status/:username", async (req, res) => {
+  const username = req.params.username;
+  const user = await User.findOne({ username });
+
+  if (!user) {
+    return res.json({ ok: false });
+  }
+
+  res.json({
+    ok: true,
+    licenseKey: user.licenseKey,
+    licenseType: user.licenseType,
+    licenseActive: user.licenseActive
+  });
+});
+
+// ===============================
+// چک لایسنس هنگام فعال‌سازی آفلاین مود
+// ===============================
+app.post("/license/verify", async (req, res) => {
+  const { username, key } = req.body;
+
+  const user = await User.findOne({ username });
+
+  if (!user) return res.json({ valid: false });
+
+  if (user.licenseKey === key) {
+    // فعال‌سازی آفلاین مود
+    user.licenseType = "offline";
+    user.licenseActive = true;
+    await user.save();
+
+    return res.json({ valid: true });
+  }
+
+  res.json({ valid: false });
 });
 
 // اجرای سرور
