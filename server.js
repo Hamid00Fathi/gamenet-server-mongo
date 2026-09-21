@@ -25,10 +25,29 @@ const UserSchema = new mongoose.Schema({
   // لایسنس آفلاین
   licenseKey: String,
   licenseType: { type: String, default: "online" }, // online یا offline
-  licenseActive: { type: Boolean, default: false }  // فعال یا غیرفعال
+  licenseActive: { type: Boolean, default: false }
 });
 
 const User = mongoose.model("User", UserSchema);
+
+// ===============================
+// لاگین نرم‌افزار (فقط چک یوزرنیم + پسورد)
+// ===============================
+app.post("/login", async (req, res) => {
+  const { username, password } = req.body;
+
+  const user = await User.findOne({ username });
+
+  if (!user) {
+    return res.status(404).json({ ok: false, error: "User not found" });
+  }
+
+  if (user.password !== password) {
+    return res.status(403).json({ ok: false, error: "Wrong password" });
+  }
+
+  res.json({ ok: true });
+});
 
 // ===============================
 // چک یوزرنیم وجود دارد یا نه
@@ -40,43 +59,19 @@ app.get("/check/:username", async (req, res) => {
 });
 
 // ===============================
-// ثبت یا آپدیت وضعیت سیستم‌ها از نرم‌افزار
+// آپدیت وضعیت سیستم‌ها (فقط برای سایت)
 // ===============================
 app.post("/status/:username", async (req, res) => {
   const username = req.params.username;
-  const { password, systems, lastUpdate } = req.body;
+  const { systems, lastUpdate } = req.body;
 
-  let user = await User.findOne({ username });
+  const user = await User.findOne({ username });
 
-  // اگر کاربر هست و پسورد اشتباه است
-  if (user && user.password !== password) {
-    return res.status(403).json({ error: "Wrong password" });
-  }
-
-  // اگر کاربر نیست → ساخت کاربر جدید
   if (!user) {
-    const licenseKey = `OFF-${username}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-
-    user = new User({
-      username,
-      password,
-      systems: systems || {},
-      lastUpdate: lastUpdate || new Date().toISOString(),
-      expireDate: null,
-
-      // لایسنس پیش‌فرض
-      licenseKey,
-      licenseType: "online",
-      licenseActive: false
-    });
-
-    await user.save();
-    return res.json({ ok: true, created: true, licenseKey });
+    return res.status(404).json({ error: "User not found" });
   }
 
-  // اگر کاربر هست → آپدیت
-  user.password = password;
-
+  // فقط آپدیت سیستم‌ها
   const isEmptySystems =
     !systems ||
     (typeof systems === "object" && Object.keys(systems).length === 0);
@@ -189,7 +184,6 @@ app.post("/license/verify", async (req, res) => {
   if (!user) return res.json({ valid: false });
 
   if (user.licenseKey === key) {
-    // فعال‌سازی آفلاین مود
     user.licenseType = "offline";
     user.licenseActive = true;
     await user.save();
