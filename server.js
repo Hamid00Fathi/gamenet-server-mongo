@@ -58,6 +58,34 @@ app.get("/check/:username", async (req, res) => {
   res.json({ exists: !!exists });
 });
 
+
+app.post("/register", async (req, res) => {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res.json({ ok: false, error: "Missing fields" });
+  }
+
+  const exists = await User.findOne({ username });
+  if (exists) {
+    return res.json({ ok: false, error: "User exists" });
+  }
+
+  const user = new User({
+    username,
+    password,
+    systems: {},
+    lastUpdate: new Date().toISOString(),
+    expireDate: null,
+    licenseKey: null,
+    licenseType: "online",
+    licenseActive: false
+  });
+
+  await user.save();
+
+  res.json({ ok: true });
+});
 // ===============================
 // آپدیت وضعیت سیستم‌ها (فقط برای سایت)
 // ===============================
