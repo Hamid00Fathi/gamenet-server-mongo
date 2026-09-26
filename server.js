@@ -71,8 +71,13 @@ app.post("/register", async (req, res) => {
     return res.json({ ok: false, error: "User exists" });
   }
 
-  // ساخت لایسنس کی تصادفی
-  const licenseKey = Math.random().toString(36).substring(2, 10).toUpperCase();
+  // ساخت لایسنس‌کی حرفه‌ای
+  function generateLicenseKey() {
+    const part = () => Math.random().toString(36).substring(2, 6).toUpperCase();
+    return `GN-${part()}-${part()}-${part()}`;
+  }
+
+  const licenseKey = generateLicenseKey();
 
   const user = new User({
     username,
@@ -81,7 +86,7 @@ app.post("/register", async (req, res) => {
     lastUpdate: new Date().toISOString(),
     expireDate: null,
 
-    // لایسنس
+    // لایسنس حرفه‌ای
     licenseKey,
     licenseType: "online",
     licenseActive: false
@@ -92,10 +97,6 @@ app.post("/register", async (req, res) => {
   res.json({ ok: true, licenseKey });
 });
 
-  await user.save();
-
-  res.json({ ok: true });
-});
 // ===============================
 // آپدیت وضعیت سیستم‌ها (فقط برای سایت)
 // ===============================
