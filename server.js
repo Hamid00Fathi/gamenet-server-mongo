@@ -71,16 +71,26 @@ app.post("/register", async (req, res) => {
     return res.json({ ok: false, error: "User exists" });
   }
 
+  // ساخت لایسنس کی تصادفی
+  const licenseKey = Math.random().toString(36).substring(2, 10).toUpperCase();
+
   const user = new User({
     username,
     password,
     systems: {},
     lastUpdate: new Date().toISOString(),
     expireDate: null,
-    licenseKey: null,
+
+    // لایسنس
+    licenseKey,
     licenseType: "online",
     licenseActive: false
   });
+
+  await user.save();
+
+  res.json({ ok: true, licenseKey });
+});
 
   await user.save();
 
